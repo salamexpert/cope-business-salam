@@ -1,0 +1,10 @@
+export { default as Login } from './Login';
+export { default as SignUp } from './SignUp';
+export { default as ForgotPassword } from './ForgotPassword';
+export { default as Dashboard } from './Dashboard';
+export { default as BuyServices } from './BuyServices';
+export { default as MyOrders } from './MyOrders';
+export { default as Wallet } from './Wallet';
+export { default as Invoices } from './Invoices';
+export { default as SupportTickets } from './SupportTickets';
+export { default as Settings } from './Settings';
