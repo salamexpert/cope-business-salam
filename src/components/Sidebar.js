@@ -6,12 +6,12 @@ export default function Sidebar() {
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { label: 'Buy Services', path: '/services', icon: '🛍️' },
-    { label: 'My Orders', path: '/orders', icon: '📦' },
-    { label: 'Wallet', path: '/wallet', icon: '💰' },
-    { label: 'Invoices', path: '/invoices', icon: '🧾' },
-    { label: 'Support Tickets', path: '/tickets', icon: '🎟️' },
-    { label: 'Settings', path: '/settings', icon: '⚙️' }
+    { label: 'Buy Services', path: '/dashboard/services', icon: '🛍️' },
+    { label: 'My Orders', path: '/dashboard/orders', icon: '📦' },
+    { label: 'Wallet', path: '/dashboard/wallet', icon: '💰' },
+    { label: 'Invoices', path: '/dashboard/invoices', icon: '🧾' },
+    { label: 'Support Tickets', path: '/dashboard/tickets', icon: '🎟️' },
+    { label: 'Settings', path: '/dashboard/settings', icon: '⚙️' }
   ];
 
   const isActive = (path) => location.pathname === path;
