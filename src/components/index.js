@@ -6,3 +6,5 @@ export { default as Sidebar } from './Sidebar';
 export { default as TopNav } from './TopNav';
 export { default as StatCard } from './StatCard';
 export { default as Table } from './Table';
+export { default as Navbar } from './Navbar';
+export { default as Footer } from './Footer';
