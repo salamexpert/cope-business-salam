@@ -1,10 +1,60 @@
+// Admin accounts
+export const mockAdmins = [
+  {
+    id: 'admin-1',
+    name: 'Admin User',
+    email: 'admin@cope.com',
+    password: 'admin123',
+    avatar: 'https://i.pravatar.cc/150?img=12',
+    joinDate: '2023-06-01'
+  }
+];
+
+// Client accounts
+export const mockClients = [
+  {
+    id: 'client-1',
+    name: 'John Davidson',
+    email: 'john@example.com',
+    password: 'client123',
+    avatar: 'https://i.pravatar.cc/150?img=1',
+    walletBalance: 1250.50,
+    joinDate: '2024-01-15',
+    company: 'Davidson Corp',
+    phone: '+1 555-0123'
+  },
+  {
+    id: 'client-2',
+    name: 'Sarah Miller',
+    email: 'sarah@example.com',
+    password: 'client123',
+    avatar: 'https://i.pravatar.cc/150?img=5',
+    walletBalance: 850.00,
+    joinDate: '2024-02-01',
+    company: 'Miller Industries',
+    phone: '+1 555-0456'
+  },
+  {
+    id: 'client-3',
+    name: 'Mike Johnson',
+    email: 'mike@example.com',
+    password: 'client123',
+    avatar: 'https://i.pravatar.cc/150?img=8',
+    walletBalance: 2100.75,
+    joinDate: '2023-11-20',
+    company: 'Johnson LLC',
+    phone: '+1 555-0789'
+  }
+];
+
+// Legacy support - use first client as default
 export const mockUser = {
-  id: 1,
-  name: 'John Davidson',
-  email: 'john@example.com',
-  avatar: 'https://i.pravatar.cc/150?img=1',
-  walletBalance: 1250.50,
-  joinDate: '2024-01-15'
+  id: mockClients[0].id,
+  name: mockClients[0].name,
+  email: mockClients[0].email,
+  avatar: mockClients[0].avatar,
+  walletBalance: mockClients[0].walletBalance,
+  joinDate: mockClients[0].joinDate
 };
 
 export const mockServices = [
@@ -61,6 +111,7 @@ export const mockServices = [
 export const mockOrders = [
   {
     id: 'ORD-001',
+    clientId: 'client-1',
     serviceId: 1,
     serviceName: 'SEO Optimization',
     plan: 'Standard',
@@ -72,6 +123,7 @@ export const mockOrders = [
   },
   {
     id: 'ORD-002',
+    clientId: 'client-1',
     serviceId: 2,
     serviceName: 'Content Writing',
     plan: 'Premium',
@@ -83,6 +135,7 @@ export const mockOrders = [
   },
   {
     id: 'ORD-003',
+    clientId: 'client-1',
     serviceId: 3,
     serviceName: 'Social Media Management',
     plan: 'Basic',
@@ -94,6 +147,7 @@ export const mockOrders = [
   },
   {
     id: 'ORD-004',
+    clientId: 'client-2',
     serviceId: 1,
     serviceName: 'SEO Optimization',
     plan: 'Basic',
@@ -102,6 +156,18 @@ export const mockOrders = [
     status: 'Completed',
     progress: 100,
     deliveredFiles: ['Initial_Audit.pdf']
+  },
+  {
+    id: 'ORD-005',
+    clientId: 'client-3',
+    serviceId: 4,
+    serviceName: 'Web Design',
+    plan: 'Standard',
+    date: '2024-02-15',
+    price: 1999,
+    status: 'In Progress',
+    progress: 30,
+    deliveredFiles: []
   }
 ];
 
@@ -151,37 +217,86 @@ export const mockTransactions = [
 export const mockInvoices = [
   {
     id: 'INV-001',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
+    clientEmail: 'john@example.com',
+    clientCompany: 'Davidson Corp',
     date: '2024-02-15',
+    dueDate: '2024-03-15',
     amount: 199,
     status: 'Paid',
-    orderId: 'ORD-003'
+    orderId: 'ORD-003',
+    lineItems: [
+      { description: 'Social Media Management - Basic Plan', quantity: 1, unitPrice: 199, total: 199 }
+    ]
   },
   {
     id: 'INV-002',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
+    clientEmail: 'john@example.com',
+    clientCompany: 'Davidson Corp',
     date: '2024-02-01',
+    dueDate: '2024-03-01',
     amount: 699,
     status: 'Paid',
-    orderId: 'ORD-002'
+    orderId: 'ORD-002',
+    lineItems: [
+      { description: 'Content Writing - Premium Plan', quantity: 1, unitPrice: 699, total: 699 }
+    ]
   },
   {
     id: 'INV-003',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
+    clientEmail: 'john@example.com',
+    clientCompany: 'Davidson Corp',
     date: '2024-01-20',
+    dueDate: '2024-02-20',
     amount: 599,
     status: 'Paid',
-    orderId: 'ORD-001'
+    orderId: 'ORD-001',
+    lineItems: [
+      { description: 'SEO Optimization - Standard Plan', quantity: 1, unitPrice: 599, total: 599 }
+    ]
   },
   {
     id: 'INV-004',
+    clientId: 'client-2',
+    clientName: 'Sarah Miller',
+    clientEmail: 'sarah@example.com',
+    clientCompany: 'Miller Industries',
     date: '2024-01-05',
+    dueDate: '2024-02-05',
     amount: 299,
     status: 'Paid',
-    orderId: 'ORD-004'
+    orderId: 'ORD-004',
+    lineItems: [
+      { description: 'SEO Optimization - Basic Plan', quantity: 1, unitPrice: 299, total: 299 }
+    ]
+  },
+  {
+    id: 'INV-005',
+    clientId: 'client-3',
+    clientName: 'Mike Johnson',
+    clientEmail: 'mike@example.com',
+    clientCompany: 'Johnson LLC',
+    date: '2024-02-15',
+    dueDate: '2024-03-15',
+    amount: 1999,
+    status: 'Pending',
+    orderId: 'ORD-005',
+    lineItems: [
+      { description: 'Web Design - Standard Plan', quantity: 1, unitPrice: 1999, total: 1999 }
+    ]
   }
 ];
 
 export const mockTickets = [
   {
     id: 'TKT-001',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
     subject: 'Delayed order delivery',
     status: 'Open',
     lastUpdated: '2024-02-14',
@@ -213,6 +328,8 @@ export const mockTickets = [
   },
   {
     id: 'TKT-002',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
     subject: 'Question about SEO package features',
     status: 'Resolved',
     lastUpdated: '2024-02-05',
@@ -237,6 +354,8 @@ export const mockTickets = [
   },
   {
     id: 'TKT-003',
+    clientId: 'client-2',
+    clientName: 'Sarah Miller',
     subject: 'Billing inquiry',
     status: 'Open',
     lastUpdated: '2024-02-16',
@@ -250,5 +369,41 @@ export const mockTickets = [
         isSupport: false
       }
     ]
+  }
+];
+
+export const mockReports = [
+  {
+    id: 'RPT-001',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
+    clientEmail: 'john@example.com',
+    title: 'SEO Performance Report - January 2024',
+    date: '2024-01-31',
+    status: 'Sent',
+    content: 'Monthly SEO performance summary including keyword rankings, traffic analysis, and recommendations for February.',
+    orderId: 'ORD-001'
+  },
+  {
+    id: 'RPT-002',
+    clientId: 'client-1',
+    clientName: 'John Davidson',
+    clientEmail: 'john@example.com',
+    title: 'Content Writing Progress Update',
+    date: '2024-02-10',
+    status: 'Sent',
+    content: 'Progress update on your Premium Content Writing package. 7 out of 20 blog posts have been completed.',
+    orderId: 'ORD-002'
+  },
+  {
+    id: 'RPT-003',
+    clientId: 'client-3',
+    clientName: 'Mike Johnson',
+    clientEmail: 'mike@example.com',
+    title: 'Web Design Mockup Preview',
+    date: '2024-02-18',
+    status: 'Draft',
+    content: 'Initial mockup designs for your website. Please review and provide feedback.',
+    orderId: 'ORD-005'
   }
 ];

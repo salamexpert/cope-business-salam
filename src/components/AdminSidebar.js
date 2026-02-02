@@ -1,26 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
-import './Sidebar.css';
+import './AdminSidebar.css';
 
-export default function Sidebar() {
+export default function AdminSidebar() {
   const location = useLocation();
 
   const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { label: 'Buy Services', path: '/dashboard/services', icon: '🛍️' },
-    { label: 'My Orders', path: '/dashboard/orders', icon: '📦' },
-    { label: 'Wallet', path: '/dashboard/wallet', icon: '💰' },
-    { label: 'Invoices', path: '/dashboard/invoices', icon: '🧾' },
-    { label: 'Reports', path: '/dashboard/reports', icon: '📋' },
-    { label: 'Support Tickets', path: '/dashboard/tickets', icon: '🎟️' },
-    { label: 'Settings', path: '/dashboard/settings', icon: '⚙️' }
+    { label: 'Dashboard', path: '/admin', icon: '📊' },
+    { label: 'Clients', path: '/admin/clients', icon: '👥' },
+    { label: 'Tickets', path: '/admin/tickets', icon: '🎟️' },
+    { label: 'Invoices', path: '/admin/invoices', icon: '🧾' },
+    { label: 'Reports', path: '/admin/reports', icon: '📋' },
+    { label: 'Settings', path: '/admin/settings', icon: '⚙️' }
   ];
 
   const isActive = (path) => location.pathname === path;
 
   return (
-    <aside className="sidebar">
+    <aside className="admin-sidebar">
       <div className="sidebar-logo">
-        <h1>COPE Business</h1>
+        <h1>COPE Admin</h1>
       </div>
 
       <nav className="sidebar-nav">

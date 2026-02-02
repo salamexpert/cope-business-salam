@@ -1,14 +1,23 @@
-import { StatCard, Card, CardHeader, CardBody, Table, Badge } from '../components';
-import { mockUser, mockOrders, mockTransactions } from '../data/mockData';
+import { Link } from 'react-router-dom';
+import { StatCard, Card, CardHeader, CardBody, Table, Badge, Button } from '../components';
+import { mockClients, mockOrders, mockTransactions, mockTickets } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const completedOrders = mockOrders.filter(o => o.status === 'Completed').length;
-  const activeOrders = mockOrders.filter(o => o.status !== 'Completed').length;
-  const openTickets = 2;
+  const { user } = useAuth();
+  const clientData = mockClients.find(c => c.id === user?.id) || mockClients[0];
 
-  const recentOrders = mockOrders.slice(0, 5);
+  // Filter data for current client
+  const clientOrders = mockOrders.filter(o => o.clientId === user?.id);
+  const clientTickets = mockTickets.filter(t => t.clientId === user?.id);
+
+  const completedOrders = clientOrders.filter(o => o.status === 'Completed').length;
+  const activeOrders = clientOrders.filter(o => o.status !== 'Completed').length;
+  const openTickets = clientTickets.filter(t => t.status === 'Open').length;
+
+  const recentOrders = clientOrders.slice(0, 5);
   const recentTransactions = mockTransactions.slice(0, 5);
 
   const orderColumns = [
@@ -19,7 +28,7 @@ export default function Dashboard() {
     {
       key: 'status',
       label: 'Status',
-      render: (val) => <Badge variant={val.toLowerCase()}>{val}</Badge>
+      render: (val) => <Badge variant={val.toLowerCase().replace(' ', '-')}>{val}</Badge>
     }
   ];
 
@@ -31,7 +40,7 @@ export default function Dashboard() {
       label: 'Amount',
       render: (val) => (
         <span className={val >= 0 ? 'amount-positive' : 'amount-negative'}>
-          {val >= 0 ? '+' : ''} ${Math.abs(val).toFixed(2)}
+          {val >= 0 ? '+' : ''}${Math.abs(val).toFixed(2)}
         </span>
       )
     }
@@ -39,11 +48,28 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout title="Dashboard">
+      {/* Welcome Banner */}
+      <div className="welcome-banner">
+        <div className="welcome-content">
+          <h1>Welcome back, {clientData.name.split(' ')[0]}!</h1>
+          <p>Here's what's happening with your account today.</p>
+        </div>
+        <div className="welcome-actions">
+          <Link to="/dashboard/services">
+            <Button variant="primary">Browse Services</Button>
+          </Link>
+          <Link to="/dashboard/tickets">
+            <Button variant="secondary">Create Ticket</Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
       <div className="dashboard-grid">
         <StatCard
           icon="💰"
           label="Wallet Balance"
-          value={`$${mockUser.walletBalance.toFixed(2)}`}
+          value={`$${clientData.walletBalance.toFixed(2)}`}
           accent="green"
         />
         <StatCard
@@ -66,21 +92,62 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Quick Actions */}
+      <div className="quick-actions">
+        <h3>Quick Actions</h3>
+        <div className="quick-actions-grid">
+          <Link to="/dashboard/wallet" className="quick-action-card">
+            <span className="quick-action-icon">💳</span>
+            <span className="quick-action-label">Add Funds</span>
+          </Link>
+          <Link to="/dashboard/orders" className="quick-action-card">
+            <span className="quick-action-icon">📦</span>
+            <span className="quick-action-label">View Orders</span>
+          </Link>
+          <Link to="/dashboard/invoices" className="quick-action-card">
+            <span className="quick-action-icon">🧾</span>
+            <span className="quick-action-label">View Invoices</span>
+          </Link>
+          <Link to="/dashboard/reports" className="quick-action-card">
+            <span className="quick-action-icon">📋</span>
+            <span className="quick-action-label">View Reports</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Recent Orders */}
       <div className="dashboard-section">
         <Card>
           <CardHeader>
-            <h3>Recent Orders</h3>
+            <div className="section-header">
+              <h3>Recent Orders</h3>
+              <Link to="/dashboard/orders">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardBody className="no-padding">
-            <Table columns={orderColumns} data={recentOrders} />
+            {recentOrders.length > 0 ? (
+              <Table columns={orderColumns} data={recentOrders} />
+            ) : (
+              <div className="empty-table">
+                <p>No orders yet. <Link to="/dashboard/services">Browse services</Link> to get started!</p>
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
 
+      {/* Recent Transactions */}
       <div className="dashboard-section">
         <Card>
           <CardHeader>
-            <h3>Recent Transactions</h3>
+            <div className="section-header">
+              <h3>Recent Transactions</h3>
+              <Link to="/dashboard/wallet">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardBody className="no-padding">
             <Table columns={transactionColumns} data={recentTransactions} />

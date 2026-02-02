@@ -7,6 +7,7 @@ export { default as MyOrders } from './MyOrders';
 export { default as Wallet } from './Wallet';
 export { default as Invoices } from './Invoices';
 export { default as SupportTickets } from './SupportTickets';
+export { default as Reports } from './Reports';
 export { default as Settings } from './Settings';
 export { default as Home } from './Home';
 export { default as Services } from './Services';

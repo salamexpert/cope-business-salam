@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { mockClients } from '../data/mockData';
-import './TopNav.css';
+import { useAuth } from '../../context/AuthContext';
+import { mockAdmins } from '../../data/mockData';
+import './AdminTopNav.css';
 
-export default function TopNav({ title }) {
+export default function AdminTopNav({ title }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Get client data based on logged in user
-  const clientData = mockClients.find(c => c.id === user?.id) || mockClients[0];
+  const admin = mockAdmins.find(a => a.id === user?.id) || mockAdmins[0];
 
   const handleLogout = () => {
     logout();
@@ -18,17 +17,12 @@ export default function TopNav({ title }) {
   };
 
   return (
-    <header className="top-nav">
+    <header className="admin-top-nav">
       <div className="top-nav-left">
         <h2 className="page-title">{title}</h2>
       </div>
 
       <div className="top-nav-right">
-        <div className="balance-display">
-          <span className="balance-label">Balance:</span>
-          <span className="balance-amount">${clientData.walletBalance.toFixed(2)}</span>
-        </div>
-
         <button className="notification-btn">
           <span className="notification-icon">🔔</span>
         </button>
@@ -38,22 +32,22 @@ export default function TopNav({ title }) {
             className="user-btn"
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
-            <img src={clientData.avatar} alt="User avatar" className="user-avatar" />
-            <span className="user-name">{clientData.name.split(' ')[0]}</span>
+            <img src={admin.avatar} alt="Admin avatar" className="user-avatar" />
+            <span className="user-name">{admin.name.split(' ')[0]}</span>
             <span className="dropdown-arrow">▼</span>
           </button>
 
           {showUserMenu && (
             <div className="user-dropdown">
               <div className="user-dropdown-header">
-                <img src={clientData.avatar} alt="User avatar" className="user-dropdown-avatar" />
+                <img src={admin.avatar} alt="Admin avatar" className="user-dropdown-avatar" />
                 <div>
-                  <div className="user-dropdown-name">{clientData.name}</div>
-                  <div className="user-dropdown-email">{clientData.email}</div>
+                  <div className="user-dropdown-name">{admin.name}</div>
+                  <div className="user-dropdown-email">{admin.email}</div>
                 </div>
               </div>
               <div className="user-dropdown-divider" />
-              <a href="/dashboard/settings" className="dropdown-item">Profile Settings</a>
+              <a href="/admin/settings" className="dropdown-item">Settings</a>
               <button className="dropdown-item" onClick={handleLogout}>
                 Logout
               </button>
