@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { Card, CardBody, Button, Modal } from '../components';
-import { mockServices, mockUser } from '../data/mockData';
+import { mockServices } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './BuyServices.css';
 
 export default function BuyServices() {
+  const { user } = useAuth();
   const [selectedService, setSelectedService] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
+
+  const walletBalance = parseFloat(user?.wallet_balance || 0);
 
   const handlePurchaseClick = (service, plan) => {
     setSelectedService(service);
@@ -20,7 +24,6 @@ export default function BuyServices() {
 
   const handleConfirm = () => {
     closeModal();
-    // In a real app, this would process the payment
     alert(`Order placed successfully for ${selectedService.name} - ${selectedPlan.tier} plan`);
   };
 
@@ -90,11 +93,11 @@ export default function BuyServices() {
               <h4>Wallet Balance</h4>
               <div className="summary-item">
                 <span>Current Balance:</span>
-                <strong>${mockUser.walletBalance.toFixed(2)}</strong>
+                <strong>${walletBalance.toFixed(2)}</strong>
               </div>
               <div className="summary-item total">
                 <span>Balance After Order:</span>
-                <strong>${(mockUser.walletBalance - selectedPlan.price).toFixed(2)}</strong>
+                <strong>${(walletBalance - selectedPlan.price).toFixed(2)}</strong>
               </div>
             </div>
 

@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardBody, Button } from '../../components';
 import { useAuth } from '../../context/AuthContext';
-import { mockAdmins } from '../../data/mockData';
 import AdminLayout from './AdminLayout';
 import './AdminSettings.css';
 
 export default function AdminSettings() {
   const { user } = useAuth();
-  const admin = mockAdmins.find(a => a.id === user?.id) || mockAdmins[0];
 
   const [profile, setProfile] = useState({
-    name: admin.name,
-    email: admin.email
+    name: user?.name || '',
+    email: user?.email || ''
   });
 
   const [passwords, setPasswords] = useState({

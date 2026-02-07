@@ -1,10 +1,27 @@
+import { useState, useEffect } from 'react';
 import { StatCard, Card, CardHeader, CardBody, Table, Badge } from '../../components';
-import { mockClients, mockTickets, mockInvoices, mockOrders } from '../../data/mockData';
+import { mockTickets, mockInvoices, mockOrders } from '../../data/mockData';
+import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
-  const totalClients = mockClients.length;
+  const [totalClients, setTotalClients] = useState(0);
+
+  useEffect(() => {
+    const fetchClientCount = async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'client');
+
+      if (!error && count !== null) {
+        setTotalClients(count);
+      }
+    };
+    fetchClientCount();
+  }, []);
+
   const openTickets = mockTickets.filter(t => t.status === 'Open').length;
   const pendingInvoices = mockInvoices.filter(i => i.status === 'Pending').length;
   const activeOrders = mockOrders.filter(o => o.status !== 'Completed').length;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import { Card, CardBody } from '../components/Card';
 import './Auth.css';
@@ -10,14 +11,69 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const navigate = useNavigate();
+  const { signup } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (name && email && password === confirmPassword && agreeTerms) {
-      navigate('/dashboard');
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
     }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!agreeTerms) {
+      setError('You must agree to the Terms of Service');
+      return;
+    }
+
+    setLoading(true);
+    const result = await signup(name, email, password);
+
+    if (result.success) {
+      if (result.needsConfirmation) {
+        setConfirmationSent(true);
+      } else {
+        navigate('/dashboard');
+      }
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
   };
+
+  if (confirmationSent) {
+    return (
+      <div className="auth-container">
+        <Card className="auth-card">
+          <CardBody>
+            <div className="auth-header">
+              <h1 className="auth-logo">COPE Business</h1>
+              <h2>Check Your Email</h2>
+              <p>We've sent a confirmation link to <strong>{email}</strong>. Please check your inbox and click the link to activate your account.</p>
+            </div>
+            <div className="auth-footer">
+              <p>
+                Already confirmed?{' '}
+                <Link to="/login" className="auth-link">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-container">
@@ -28,6 +84,8 @@ export default function SignUp() {
             <h2>Create Account</h2>
             <p>Join COPE Business and manage your digital services</p>
           </div>
+
+          {error && <div className="auth-error">{error}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
@@ -61,7 +119,7 @@ export default function SignUp() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Minimum 6 characters"
                 required
               />
             </div>
@@ -73,7 +131,7 @@ export default function SignUp() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Confirm your password"
                 required
               />
             </div>
@@ -88,8 +146,8 @@ export default function SignUp() {
               <span>I agree to the Terms of Service and Privacy Policy</span>
             </label>
 
-            <Button variant="primary" className="btn-block" type="submit">
-              Create Account
+            <Button variant="primary" className="btn-block" type="submit" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
 

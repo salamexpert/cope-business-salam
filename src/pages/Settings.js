@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Card, CardBody, CardHeader, Button } from '../components';
-import { mockUser } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Settings.css';
 
 export default function Settings() {
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
-    name: mockUser.name,
-    email: mockUser.email
+    name: user?.name || '',
+    email: user?.email || ''
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -92,7 +94,7 @@ export default function Settings() {
                 <input
                   id="joinDate"
                   type="text"
-                  value={mockUser.joinDate}
+                  value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                   disabled
                 />
               </div>

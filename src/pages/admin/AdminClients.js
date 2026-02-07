@@ -1,12 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardBody, Table, Badge, Button, Modal } from '../../components';
-import { mockClients, mockOrders, mockTickets, mockInvoices } from '../../data/mockData';
+import { mockOrders, mockTickets, mockInvoices } from '../../data/mockData';
+import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import './AdminClients.css';
 
 export default function AdminClients() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'client')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching clients:', error);
+    } else {
+      const mapped = data.map(client => ({
+        ...client,
+        avatar: client.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(client.name)}&background=random`,
+        walletBalance: parseFloat(client.wallet_balance || 0),
+        joinDate: new Date(client.created_at).toLocaleDateString()
+      }));
+      setClients(mapped);
+    }
+    setLoading(false);
+  };
 
   const handleViewClient = (client) => {
     setSelectedClient(client);
@@ -28,10 +57,9 @@ export default function AdminClients() {
   };
 
   const columns = [
-    { key: 'id', label: 'Client ID' },
     { key: 'name', label: 'Name' },
     { key: 'email', label: 'Email' },
-    { key: 'company', label: 'Company' },
+    { key: 'company', label: 'Company', render: (val) => val || 'N/A' },
     { key: 'joinDate', label: 'Joined' },
     {
       key: 'actions',
@@ -51,7 +79,13 @@ export default function AdminClients() {
           <h3>All Clients</h3>
         </CardHeader>
         <CardBody className="no-padding">
-          <Table columns={columns} data={mockClients} />
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>Loading clients...</div>
+          ) : clients.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>No clients found.</div>
+          ) : (
+            <Table columns={columns} data={clients} />
+          )}
         </CardBody>
       </Card>
 
@@ -73,7 +107,7 @@ export default function AdminClients() {
               <div className="client-info">
                 <h3>{selectedClient.name}</h3>
                 <p>{selectedClient.email}</p>
-                <p>{selectedClient.company}</p>
+                <p>{selectedClient.company || 'No company'}</p>
               </div>
             </div>
 

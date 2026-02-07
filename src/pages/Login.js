@@ -8,23 +8,24 @@ import './Auth.css';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('client');
   const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    const result = login(email, password, role);
+    const result = await login(email, password);
 
     if (result.success) {
-      navigate(role === 'admin' ? '/admin' : '/dashboard');
+      navigate(result.role === 'admin' ? '/admin' : '/dashboard');
     } else {
       setError(result.error);
     }
+    setLoading(false);
   };
 
   return (
@@ -35,26 +36,6 @@ export default function Login() {
             <h1 className="auth-logo">COPE Business</h1>
             <h2>Welcome Back</h2>
             <p>Sign in to your account to continue</p>
-          </div>
-
-          {/* Role Selection */}
-          <div className="role-selector">
-            <button
-              type="button"
-              className={`role-btn ${role === 'client' ? 'active' : ''}`}
-              onClick={() => setRole('client')}
-            >
-              <span className="role-icon">👤</span>
-              <span className="role-label">Client</span>
-            </button>
-            <button
-              type="button"
-              className={`role-btn ${role === 'admin' ? 'active' : ''}`}
-              onClick={() => setRole('admin')}
-            >
-              <span className="role-icon">⚙️</span>
-              <span className="role-label">Admin</span>
-            </button>
           </div>
 
           {error && <div className="auth-error">{error}</div>}
@@ -85,43 +66,23 @@ export default function Login() {
             </div>
 
             <div className="form-options">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span>Remember me</span>
-              </label>
               <Link to="/forgot-password" className="forgot-link">
                 Forgot password?
               </Link>
             </div>
 
-            <Button variant="primary" className="btn-block" type="submit">
-              Sign In as {role === 'admin' ? 'Admin' : 'Client'}
+            <Button variant="primary" className="btn-block" type="submit" disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
 
-          {role === 'client' && (
-            <div className="auth-footer">
-              <p>
-                Don't have an account?{' '}
-                <Link to="/signup" className="auth-link">
-                  Sign up here
-                </Link>
-              </p>
-            </div>
-          )}
-
-          {/* Demo credentials hint */}
-          <div className="demo-hint">
-            <p><strong>Demo Credentials:</strong></p>
-            {role === 'admin' ? (
-              <p>admin@cope.com / admin123</p>
-            ) : (
-              <p>john@example.com / client123</p>
-            )}
+          <div className="auth-footer">
+            <p>
+              Don't have an account?{' '}
+              <Link to="/signup" className="auth-link">
+                Sign up here
+              </Link>
+            </p>
           </div>
         </CardBody>
       </Card>

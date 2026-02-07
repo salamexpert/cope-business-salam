@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { mockAdmins } from '../../data/mockData';
 import './AdminTopNav.css';
 
 export default function AdminTopNav({ title }) {
@@ -9,10 +8,10 @@ export default function AdminTopNav({ title }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const admin = mockAdmins.find(a => a.id === user?.id) || mockAdmins[0];
+  const avatarUrl = user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || '')}&background=random`;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -32,18 +31,18 @@ export default function AdminTopNav({ title }) {
             className="user-btn"
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
-            <img src={admin.avatar} alt="Admin avatar" className="user-avatar" />
-            <span className="user-name">{admin.name.split(' ')[0]}</span>
+            <img src={avatarUrl} alt="Admin avatar" className="user-avatar" />
+            <span className="user-name">{user?.name?.split(' ')[0] || 'Admin'}</span>
             <span className="dropdown-arrow">▼</span>
           </button>
 
           {showUserMenu && (
             <div className="user-dropdown">
               <div className="user-dropdown-header">
-                <img src={admin.avatar} alt="Admin avatar" className="user-dropdown-avatar" />
+                <img src={avatarUrl} alt="Admin avatar" className="user-dropdown-avatar" />
                 <div>
-                  <div className="user-dropdown-name">{admin.name}</div>
-                  <div className="user-dropdown-email">{admin.email}</div>
+                  <div className="user-dropdown-name">{user?.name || 'Admin'}</div>
+                  <div className="user-dropdown-email">{user?.email || ''}</div>
                 </div>
               </div>
               <div className="user-dropdown-divider" />

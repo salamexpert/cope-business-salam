@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Card, CardBody, CardHeader, Table, Badge, Button, Modal } from '../components';
-import { mockUser, mockTransactions } from '../data/mockData';
+import { mockTransactions } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Wallet.css';
 
 export default function Wallet() {
+  const { user } = useAuth();
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('card');
-  const [balance, setBalance] = useState(mockUser.walletBalance);
+  const [balance, setBalance] = useState(parseFloat(user?.wallet_balance || 0));
 
   const columns = [
     { key: 'date', label: 'Date' },

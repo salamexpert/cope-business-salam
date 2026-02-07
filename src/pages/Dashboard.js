@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom';
 import { StatCard, Card, CardHeader, CardBody, Table, Badge, Button } from '../components';
-import { mockClients, mockOrders, mockTransactions, mockTickets } from '../data/mockData';
+import { mockOrders, mockTransactions, mockTickets } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const clientData = mockClients.find(c => c.id === user?.id) || mockClients[0];
 
   // Filter data for current client
   const clientOrders = mockOrders.filter(o => o.clientId === user?.id);
@@ -51,7 +50,7 @@ export default function Dashboard() {
       {/* Welcome Banner */}
       <div className="welcome-banner">
         <div className="welcome-content">
-          <h1>Welcome back, {clientData.name.split(' ')[0]}!</h1>
+          <h1>Welcome back, {user?.name?.split(' ')[0] || 'User'}!</h1>
           <p>Here's what's happening with your account today.</p>
         </div>
         <div className="welcome-actions">
@@ -69,7 +68,7 @@ export default function Dashboard() {
         <StatCard
           icon="💰"
           label="Wallet Balance"
-          value={`$${clientData.walletBalance.toFixed(2)}`}
+          value={`$${parseFloat(user?.wallet_balance || 0).toFixed(2)}`}
           accent="green"
         />
         <StatCard

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { mockClients } from '../data/mockData';
 import './TopNav.css';
 
 export default function TopNav({ title }) {
@@ -9,11 +8,10 @@ export default function TopNav({ title }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Get client data based on logged in user
-  const clientData = mockClients.find(c => c.id === user?.id) || mockClients[0];
+  const avatarUrl = user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || '')}&background=random`;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -26,7 +24,7 @@ export default function TopNav({ title }) {
       <div className="top-nav-right">
         <div className="balance-display">
           <span className="balance-label">Balance:</span>
-          <span className="balance-amount">${clientData.walletBalance.toFixed(2)}</span>
+          <span className="balance-amount">${parseFloat(user?.wallet_balance || 0).toFixed(2)}</span>
         </div>
 
         <button className="notification-btn">
@@ -38,18 +36,18 @@ export default function TopNav({ title }) {
             className="user-btn"
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
-            <img src={clientData.avatar} alt="User avatar" className="user-avatar" />
-            <span className="user-name">{clientData.name.split(' ')[0]}</span>
+            <img src={avatarUrl} alt="User avatar" className="user-avatar" />
+            <span className="user-name">{user?.name?.split(' ')[0] || 'User'}</span>
             <span className="dropdown-arrow">▼</span>
           </button>
 
           {showUserMenu && (
             <div className="user-dropdown">
               <div className="user-dropdown-header">
-                <img src={clientData.avatar} alt="User avatar" className="user-dropdown-avatar" />
+                <img src={avatarUrl} alt="User avatar" className="user-dropdown-avatar" />
                 <div>
-                  <div className="user-dropdown-name">{clientData.name}</div>
-                  <div className="user-dropdown-email">{clientData.email}</div>
+                  <div className="user-dropdown-name">{user?.name || 'User'}</div>
+                  <div className="user-dropdown-email">{user?.email || ''}</div>
                 </div>
               </div>
               <div className="user-dropdown-divider" />

@@ -3,7 +3,12 @@
     "allow": [
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git clone:*)",
+      "Bash(dir /s /b \"d:\\\\salam\\\\backlink-copebusiness\\\\client-portal\\\\package.json\")",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

@@ -1,3 +1,7 @@
+// NOTE: Auth has moved to Supabase. mockAdmins and mockUser are no longer used for auth.
+// mockClients is still used by AdminInvoices and AdminReports for create-form dropdowns.
+// These will be removed when invoices/reports are migrated to Supabase in Phase 2.
+
 // Admin accounts
 export const mockAdmins = [
   {
