@@ -1,36 +1,69 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardBody, Button } from '../../components';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import './AdminSettings.css';
 
 export default function AdminSettings() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
 
   const [profile, setProfile] = useState({
     name: user?.name || '',
     email: user?.email || ''
   });
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
     confirm: ''
   });
+  const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault();
-    alert('Profile updated successfully!');
+    setProfileMsg({ type: '', text: '' });
+    setProfileLoading(true);
+
+    const result = await updateProfile({ name: profile.name });
+
+    if (result.success) {
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
+    } else {
+      setProfileMsg({ type: 'error', text: result.error });
+    }
+    setProfileLoading(false);
   };
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
-    if (passwords.new !== passwords.confirm) {
-      alert('New passwords do not match!');
+    setPasswordMsg({ type: '', text: '' });
+
+    if (passwords.new.length < 6) {
+      setPasswordMsg({ type: 'error', text: 'New password must be at least 6 characters.' });
       return;
     }
-    alert('Password changed successfully!');
-    setPasswords({ current: '', new: '', confirm: '' });
+    if (passwords.new !== passwords.confirm) {
+      setPasswordMsg({ type: 'error', text: 'New passwords do not match!' });
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: passwords.new
+    });
+
+    if (error) {
+      setPasswordMsg({ type: 'error', text: error.message });
+    } else {
+      setPasswordMsg({ type: 'success', text: 'Password changed successfully!' });
+      setPasswords({ current: '', new: '', confirm: '' });
+    }
+    setPasswordLoading(false);
   };
 
   return (
@@ -42,6 +75,9 @@ export default function AdminSettings() {
           </CardHeader>
           <CardBody>
             <form onSubmit={handleProfileSave} className="settings-form">
+              {profileMsg.text && (
+                <div className={`settings-msg ${profileMsg.type}`}>{profileMsg.text}</div>
+              )}
               <div className="form-group">
                 <label>Full Name</label>
                 <input
@@ -55,15 +91,15 @@ export default function AdminSettings() {
                 <input
                   type="email"
                   value={profile.email}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  disabled
                 />
               </div>
               <div className="form-group">
                 <label>Role</label>
                 <input type="text" value="Administrator" disabled />
               </div>
-              <Button type="submit" variant="primary">
-                Save Changes
+              <Button type="submit" variant="primary" disabled={profileLoading}>
+                {profileLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </form>
           </CardBody>
@@ -75,15 +111,9 @@ export default function AdminSettings() {
           </CardHeader>
           <CardBody>
             <form onSubmit={handlePasswordChange} className="settings-form">
-              <div className="form-group">
-                <label>Current Password</label>
-                <input
-                  type="password"
-                  value={passwords.current}
-                  onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-                  placeholder="Enter current password"
-                />
-              </div>
+              {passwordMsg.text && (
+                <div className={`settings-msg ${passwordMsg.type}`}>{passwordMsg.text}</div>
+              )}
               <div className="form-group">
                 <label>New Password</label>
                 <input
@@ -102,8 +132,8 @@ export default function AdminSettings() {
                   placeholder="Confirm new password"
                 />
               </div>
-              <Button type="submit" variant="primary">
-                Update Password
+              <Button type="submit" variant="primary" disabled={passwordLoading}>
+                {passwordLoading ? 'Updating...' : 'Update Password'}
               </Button>
             </form>
           </CardBody>

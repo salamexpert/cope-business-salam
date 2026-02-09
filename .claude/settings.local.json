@@ -8,7 +8,8 @@
       "Bash(gh repo view:*)",
       "Bash(git clone:*)",
       "Bash(dir /s /b \"d:\\\\salam\\\\backlink-copebusiness\\\\client-portal\\\\package.json\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(npx react-scripts build:*)"
     ]
   }
 }

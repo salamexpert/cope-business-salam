@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Card, CardBody, CardHeader, Button } from '../components';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Settings.css';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
-    email: user?.email || ''
+    email: user?.email || '',
+    company: user?.company || '',
+    phone: user?.phone || ''
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -18,12 +21,8 @@ export default function Settings() {
     confirm: ''
   });
 
-  const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    orderUpdates: true,
-    ticketUpdates: true,
-    promotions: false
-  });
+  const [profileMsg, setProfileMsg] = useState(null);
+  const [passwordMsg, setPasswordMsg] = useState(null);
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -35,28 +34,57 @@ export default function Settings() {
     setPasswordForm({ ...passwordForm, [name]: value });
   };
 
-  const handleNotificationChange = (key) => {
-    setNotifications({ ...notifications, [key]: !notifications[key] });
-  };
-
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    alert('Profile updated successfully');
-  };
+    setProfileMsg(null);
 
-  const handleChangePassword = (e) => {
-    e.preventDefault();
-    if (passwordForm.new === passwordForm.confirm) {
-      alert('Password changed successfully');
-      setPasswordForm({ current: '', new: '', confirm: '' });
+    const result = await updateProfile({
+      name: formData.name,
+      company: formData.company,
+      phone: formData.phone
+    });
+
+    if (result.success) {
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
     } else {
-      alert('Passwords do not match');
+      setProfileMsg({ type: 'error', text: result.error || 'Failed to update profile.' });
     }
   };
 
-  const handleNotificationSave = () => {
-    alert('Notification preferences updated');
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+
+    if (passwordForm.new !== passwordForm.confirm) {
+      setPasswordMsg({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+
+    if (passwordForm.new.length < 6) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: passwordForm.new
+    });
+
+    if (error) {
+      setPasswordMsg({ type: 'error', text: error.message });
+    } else {
+      setPasswordMsg({ type: 'success', text: 'Password updated successfully!' });
+      setPasswordForm({ current: '', new: '', confirm: '' });
+    }
   };
+
+  const msgStyle = (msg) => ({
+    padding: '0.75rem',
+    borderRadius: '8px',
+    marginBottom: '1rem',
+    background: msg.type === 'success' ? '#f0fdf4' : '#fef2f2',
+    color: msg.type === 'success' ? '#16a34a' : '#dc2626',
+    fontSize: '0.875rem'
+  });
 
   return (
     <DashboardLayout title="Settings">
@@ -66,6 +94,7 @@ export default function Settings() {
             <h3>Profile Information</h3>
           </CardHeader>
           <CardBody>
+            {profileMsg && <div style={msgStyle(profileMsg)}>{profileMsg.text}</div>}
             <form onSubmit={handleSaveProfile} className="settings-form">
               <div className="form-group">
                 <label htmlFor="name">Full Name</label>
@@ -85,7 +114,31 @@ export default function Settings() {
                   type="email"
                   name="email"
                   value={formData.email}
+                  disabled
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="company">Company</label>
+                <input
+                  id="company"
+                  type="text"
+                  name="company"
+                  value={formData.company}
                   onChange={handleProfileChange}
+                  placeholder="Your company name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="phone">Phone</label>
+                <input
+                  id="phone"
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleProfileChange}
+                  placeholder="Your phone number"
                 />
               </div>
 
@@ -111,19 +164,8 @@ export default function Settings() {
             <h3>Change Password</h3>
           </CardHeader>
           <CardBody>
+            {passwordMsg && <div style={msgStyle(passwordMsg)}>{passwordMsg.text}</div>}
             <form onSubmit={handleChangePassword} className="settings-form">
-              <div className="form-group">
-                <label htmlFor="current">Current Password</label>
-                <input
-                  id="current"
-                  type="password"
-                  name="current"
-                  value={passwordForm.current}
-                  onChange={handlePasswordChange}
-                  placeholder="••••••••"
-                />
-              </div>
-
               <div className="form-group">
                 <label htmlFor="new">New Password</label>
                 <input
@@ -152,79 +194,6 @@ export default function Settings() {
                 Update Password
               </Button>
             </form>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h3>Notification Preferences</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="settings-form">
-              <div className="preference-item">
-                <div className="preference-info">
-                  <h4>Email Notifications</h4>
-                  <p>Receive email notifications for important updates</p>
-                </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={notifications.emailNotifications}
-                    onChange={() => handleNotificationChange('emailNotifications')}
-                  />
-                  <span className="toggle-slider" />
-                </label>
-              </div>
-
-              <div className="preference-item">
-                <div className="preference-info">
-                  <h4>Order Updates</h4>
-                  <p>Get notified when your orders are updated</p>
-                </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={notifications.orderUpdates}
-                    onChange={() => handleNotificationChange('orderUpdates')}
-                  />
-                  <span className="toggle-slider" />
-                </label>
-              </div>
-
-              <div className="preference-item">
-                <div className="preference-info">
-                  <h4>Support Ticket Updates</h4>
-                  <p>Receive notifications for ticket responses</p>
-                </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={notifications.ticketUpdates}
-                    onChange={() => handleNotificationChange('ticketUpdates')}
-                  />
-                  <span className="toggle-slider" />
-                </label>
-              </div>
-
-              <div className="preference-item">
-                <div className="preference-info">
-                  <h4>Promotional Emails</h4>
-                  <p>Receive special offers and promotions</p>
-                </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={notifications.promotions}
-                    onChange={() => handleNotificationChange('promotions')}
-                  />
-                  <span className="toggle-slider" />
-                </label>
-              </div>
-
-              <Button variant="primary" onClick={handleNotificationSave}>
-                Save Preferences
-              </Button>
-            </div>
           </CardBody>
         </Card>
       </div>

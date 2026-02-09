@@ -1,23 +1,50 @@
-import { useState } from 'react';
-import { Card, CardBody, CardHeader, Table, Badge, Button, Modal } from '../components';
-import { mockTickets } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { Card, CardBody, Table, Badge, Button, Modal } from '../components';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './SupportTickets.css';
 
 export default function SupportTickets() {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState(mockTickets);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showNewTicket, setShowNewTicket] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [newTicketForm, setNewTicketForm] = useState({ subject: '', description: '', priority: 'Medium' });
 
-  // Filter tickets for current client
-  const clientTickets = tickets.filter(t => t.clientId === user?.id);
+  useEffect(() => {
+    if (user?.id) fetchTickets();
+  }, [user?.id]);
+
+  const fetchTickets = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*, ticket_messages(*)')
+      .eq('client_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching tickets:', error);
+    } else {
+      const mapped = data.map(t => ({
+        ...t,
+        lastUpdated: new Date(t.last_updated || t.created_at).toLocaleDateString(),
+        messages: (t.ticket_messages || [])
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          .map(m => ({
+            ...m,
+            timestamp: new Date(m.created_at).toLocaleString(),
+          }))
+      }));
+      setTickets(mapped);
+    }
+    setLoading(false);
+  };
 
   const columns = [
-    { key: 'id', label: 'Ticket ID' },
     { key: 'subject', label: 'Subject' },
     {
       key: 'status',
@@ -41,61 +68,85 @@ export default function SupportTickets() {
     }
   ];
 
-  const handleSendReply = () => {
+  const handleSendReply = async () => {
     if (!replyText.trim() || !selectedTicket) return;
 
-    const newMessage = {
-      id: selectedTicket.messages.length + 1,
-      author: 'You',
-      timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      message: replyText,
-      isSupport: false
-    };
+    const { error } = await supabase
+      .from('ticket_messages')
+      .insert({
+        ticket_id: selectedTicket.id,
+        author: user.name || 'You',
+        message: replyText,
+        is_support: false
+      });
 
-    const updatedTickets = tickets.map(t => {
-      if (t.id === selectedTicket.id) {
-        return {
-          ...t,
-          messages: [...t.messages, newMessage],
-          lastUpdated: new Date().toISOString().slice(0, 10)
-        };
-      }
-      return t;
-    });
+    if (error) {
+      console.error('Error sending reply:', error);
+      return;
+    }
 
-    setTickets(updatedTickets);
-    setSelectedTicket({
-      ...selectedTicket,
-      messages: [...selectedTicket.messages, newMessage]
-    });
+    await supabase
+      .from('tickets')
+      .update({ last_updated: new Date().toISOString() })
+      .eq('id', selectedTicket.id);
+
     setReplyText('');
+    fetchTickets();
+
+    // Refresh selected ticket
+    const { data } = await supabase
+      .from('tickets')
+      .select('*, ticket_messages(*)')
+      .eq('id', selectedTicket.id)
+      .single();
+
+    if (data) {
+      const mapped = {
+        ...data,
+        lastUpdated: new Date(data.last_updated || data.created_at).toLocaleDateString(),
+        messages: (data.ticket_messages || [])
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          .map(m => ({
+            ...m,
+            timestamp: new Date(m.created_at).toLocaleString(),
+          }))
+      };
+      setSelectedTicket(mapped);
+    }
   };
 
-  const handleCreateTicket = () => {
+  const handleCreateTicket = async () => {
     if (!newTicketForm.subject || !newTicketForm.description) return;
 
-    const newTicket = {
-      id: `TKT-${String(tickets.length + 1).padStart(3, '0')}`,
-      clientId: user?.id,
-      clientName: user?.name,
-      subject: newTicketForm.subject,
-      status: 'Open',
-      lastUpdated: new Date().toISOString().slice(0, 10),
-      priority: newTicketForm.priority,
-      messages: [
-        {
-          id: 1,
-          author: 'You',
-          timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '),
-          message: newTicketForm.description,
-          isSupport: false
-        }
-      ]
-    };
+    const { data: ticket, error: ticketError } = await supabase
+      .from('tickets')
+      .insert({
+        client_id: user.id,
+        subject: newTicketForm.subject,
+        status: 'Open',
+        priority: newTicketForm.priority,
+        last_updated: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    setTickets([newTicket, ...tickets]);
+    if (ticketError) {
+      console.error('Error creating ticket:', ticketError);
+      return;
+    }
+
+    await supabase
+      .from('ticket_messages')
+      .insert({
+        ticket_id: ticket.id,
+        author: user.name || 'You',
+        message: newTicketForm.description,
+        is_support: false
+      });
+
     setShowNewTicket(false);
     setNewTicketForm({ subject: '', description: '', priority: 'Medium' });
+    fetchTickets();
   };
 
   return (
@@ -110,7 +161,13 @@ export default function SupportTickets() {
         </Button>
       </div>
 
-      {clientTickets.length === 0 ? (
+      {loading ? (
+        <Card>
+          <CardBody>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>Loading tickets...</div>
+          </CardBody>
+        </Card>
+      ) : tickets.length === 0 ? (
         <Card>
           <CardBody>
             <div className="empty-state">
@@ -123,7 +180,7 @@ export default function SupportTickets() {
       ) : (
         <Card>
           <CardBody className="no-padding">
-            <Table columns={columns} data={clientTickets} />
+            <Table columns={columns} data={tickets} />
           </CardBody>
         </Card>
       )}
@@ -139,18 +196,15 @@ export default function SupportTickets() {
           size="lg"
         >
           <div className="ticket-view">
-            {/* Ticket Header */}
             <div className="ticket-header">
               <div className="ticket-title-section">
                 <h3>{selectedTicket.subject}</h3>
-                <span className="ticket-id">#{selectedTicket.id}</span>
               </div>
               <Badge variant={selectedTicket.status.toLowerCase()}>
                 {selectedTicket.status}
               </Badge>
             </div>
 
-            {/* Ticket Meta */}
             <div className="ticket-meta">
               <div className="meta-item">
                 <span className="meta-label">Priority</span>
@@ -162,22 +216,15 @@ export default function SupportTickets() {
                 <span className="meta-label">Last Updated</span>
                 <span className="meta-value">{selectedTicket.lastUpdated}</span>
               </div>
-              {selectedTicket.orderId && (
-                <div className="meta-item">
-                  <span className="meta-label">Related Order</span>
-                  <span className="meta-value">{selectedTicket.orderId}</span>
-                </div>
-              )}
             </div>
 
-            {/* Conversation */}
             <div className="conversation">
               <h4>Conversation</h4>
               <div className="messages-list">
                 {selectedTicket.messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`message ${msg.isSupport ? 'support' : 'user'}`}
+                    className={`message ${msg.is_support ? 'support' : 'user'}`}
                   >
                     <div className="message-bubble">
                       <div className="message-header">
@@ -191,7 +238,6 @@ export default function SupportTickets() {
               </div>
             </div>
 
-            {/* Reply Box */}
             {selectedTicket.status === 'Open' && (
               <div className="reply-section">
                 <textarea

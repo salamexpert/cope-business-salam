@@ -1,21 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardBody, Table, Badge, Button, Modal } from '../../components';
-import { mockInvoices, mockClients } from '../../data/mockData';
+import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import './AdminInvoices.css';
 
 export default function AdminInvoices() {
-  const [invoices, setInvoices] = useState(mockInvoices);
+  const [invoices, setInvoices] = useState([]);
+  const [clients, setClients] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // New invoice form state
   const [newInvoice, setNewInvoice] = useState({
     clientId: '',
     dueDate: '',
     lineItems: [{ description: '', quantity: 1, unitPrice: 0 }]
   });
+
+  useEffect(() => {
+    fetchInvoices();
+    fetchClients();
+  }, []);
+
+  const fetchInvoices = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*, profiles!client_id(name, email, company), invoice_line_items(*)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching invoices:', error);
+    } else {
+      const mapped = data.map((inv, index) => ({
+        ...inv,
+        displayId: `INV-${String(data.length - index).padStart(3, '0')}`,
+        clientName: inv.profiles?.name || 'Unknown',
+        clientEmail: inv.profiles?.email || '',
+        clientCompany: inv.profiles?.company || '',
+        amount: parseFloat(inv.amount || 0),
+        lineItems: (inv.invoice_line_items || []).map(li => ({
+          description: li.description,
+          quantity: li.quantity,
+          unitPrice: parseFloat(li.unit_price || 0),
+          total: parseFloat(li.total || 0)
+        }))
+      }));
+      setInvoices(mapped);
+    }
+    setLoading(false);
+  };
+
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, company')
+      .eq('role', 'client')
+      .order('name');
+
+    if (!error) {
+      setClients(data || []);
+    }
+  };
 
   const handleViewInvoice = (invoice) => {
     setSelectedInvoice(invoice);
@@ -50,39 +97,65 @@ export default function AdminInvoices() {
     }, 0);
   };
 
-  const handleCreateInvoice = () => {
-    const client = mockClients.find(c => c.id === newInvoice.clientId);
+  const handleCreateInvoice = async () => {
+    const client = clients.find(c => c.id === newInvoice.clientId);
     if (!client || !newInvoice.dueDate) return;
 
     const total = calculateTotal();
-    const lineItemsWithTotal = newInvoice.lineItems.map(item => ({
-      ...item,
+
+    const { data: invData, error: invError } = await supabase
+      .from('invoices')
+      .insert({
+        client_id: client.id,
+        date: new Date().toISOString().slice(0, 10),
+        due_date: newInvoice.dueDate,
+        amount: total,
+        status: 'Pending'
+      })
+      .select()
+      .single();
+
+    if (invError) {
+      console.error('Error creating invoice:', invError);
+      return;
+    }
+
+    const lineItemsToInsert = newInvoice.lineItems.map(item => ({
+      invoice_id: invData.id,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
       total: item.quantity * item.unitPrice
     }));
 
-    const invoice = {
-      id: `INV-${String(invoices.length + 1).padStart(3, '0')}`,
-      clientId: client.id,
-      clientName: client.name,
-      clientEmail: client.email,
-      clientCompany: client.company,
-      date: new Date().toISOString().slice(0, 10),
-      dueDate: newInvoice.dueDate,
-      amount: total,
-      status: 'Pending',
-      lineItems: lineItemsWithTotal
-    };
+    const { error: liError } = await supabase
+      .from('invoice_line_items')
+      .insert(lineItemsToInsert);
 
-    setInvoices([invoice, ...invoices]);
+    if (liError) {
+      console.error('Error creating line items:', liError);
+    }
+
     setShowCreateModal(false);
     setNewInvoice({
       clientId: '',
       dueDate: '',
       lineItems: [{ description: '', quantity: 1, unitPrice: 0 }]
     });
+    fetchInvoices();
   };
 
-  const handleMarkAsPaid = (invoiceId) => {
+  const handleMarkAsPaid = async (invoiceId) => {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ status: 'Paid' })
+      .eq('id', invoiceId);
+
+    if (error) {
+      console.error('Error marking as paid:', error);
+      return;
+    }
+
     const updatedInvoices = invoices.map(inv => {
       if (inv.id === invoiceId) {
         return { ...inv, status: 'Paid' };
@@ -97,10 +170,10 @@ export default function AdminInvoices() {
   };
 
   const columns = [
-    { key: 'id', label: 'Invoice ID' },
+    { key: 'displayId', label: 'Invoice ID' },
     { key: 'clientName', label: 'Client' },
     { key: 'date', label: 'Date' },
-    { key: 'dueDate', label: 'Due Date' },
+    { key: 'due_date', label: 'Due Date' },
     { key: 'amount', label: 'Amount', render: (val) => `$${val.toFixed(2)}` },
     {
       key: 'status',
@@ -137,11 +210,16 @@ export default function AdminInvoices() {
           </div>
         </CardHeader>
         <CardBody className="no-padding">
-          <Table columns={columns} data={invoices} />
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>Loading invoices...</div>
+          ) : invoices.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>No invoices found.</div>
+          ) : (
+            <Table columns={columns} data={invoices} />
+          )}
         </CardBody>
       </Card>
 
-      {/* Create Invoice Modal */}
       {showCreateModal && (
         <Modal
           title="Create New Invoice"
@@ -157,9 +235,9 @@ export default function AdminInvoices() {
                   onChange={(e) => setNewInvoice({ ...newInvoice, clientId: e.target.value })}
                 >
                   <option value="">Select a client</option>
-                  {mockClients.map(client => (
+                  {clients.map(client => (
                     <option key={client.id} value={client.id}>
-                      {client.name} - {client.company}
+                      {client.name} {client.company ? `- ${client.company}` : ''}
                     </option>
                   ))}
                 </select>
@@ -236,10 +314,9 @@ export default function AdminInvoices() {
         </Modal>
       )}
 
-      {/* View Invoice Modal */}
       {showViewModal && selectedInvoice && (
         <Modal
-          title={`Invoice ${selectedInvoice.id}`}
+          title={`Invoice ${selectedInvoice.displayId}`}
           onClose={() => {
             setShowViewModal(false);
             setSelectedInvoice(null);
@@ -250,7 +327,7 @@ export default function AdminInvoices() {
             <div className="invoice-header-section">
               <div className="invoice-info">
                 <h3>COPE Business</h3>
-                <p>Invoice #{selectedInvoice.id}</p>
+                <p>Invoice #{selectedInvoice.displayId}</p>
               </div>
               <Badge variant={selectedInvoice.status.toLowerCase()} size="lg">
                 {selectedInvoice.status}
@@ -267,7 +344,7 @@ export default function AdminInvoices() {
               <div className="detail-section">
                 <h4>Invoice Details</h4>
                 <p><strong>Date:</strong> {selectedInvoice.date}</p>
-                <p><strong>Due Date:</strong> {selectedInvoice.dueDate}</p>
+                <p><strong>Due Date:</strong> {selectedInvoice.due_date}</p>
               </div>
             </div>
 

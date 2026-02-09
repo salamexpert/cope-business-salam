@@ -1,19 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardBody, Table, Badge, Button, Modal } from '../components';
-import { mockReports } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Reports.css';
 
 export default function Reports() {
   const { user } = useAuth();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Filter reports for the current client that have been sent
-  const clientReports = mockReports.filter(
-    r => r.clientId === user?.id && r.status === 'Sent'
-  );
+  useEffect(() => {
+    if (user?.id) fetchReports();
+  }, [user?.id]);
+
+  const fetchReports = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('client_id', user.id)
+      .eq('status', 'Sent')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching reports:', error);
+    } else {
+      setReports(data || []);
+    }
+    setLoading(false);
+  };
 
   const handleViewReport = (report) => {
     setSelectedReport(report);
@@ -21,7 +39,6 @@ export default function Reports() {
   };
 
   const columns = [
-    { key: 'id', label: 'Report ID' },
     { key: 'title', label: 'Title' },
     { key: 'date', label: 'Date Received' },
     {
@@ -37,7 +54,13 @@ export default function Reports() {
 
   return (
     <DashboardLayout title="Reports">
-      {clientReports.length === 0 ? (
+      {loading ? (
+        <Card>
+          <CardBody>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>Loading reports...</div>
+          </CardBody>
+        </Card>
+      ) : reports.length === 0 ? (
         <Card>
           <CardBody>
             <div className="empty-state">
@@ -53,7 +76,7 @@ export default function Reports() {
             <h3>Your Reports</h3>
           </CardHeader>
           <CardBody className="no-padding">
-            <Table columns={columns} data={clientReports} />
+            <Table columns={columns} data={reports} />
           </CardBody>
         </Card>
       )}
@@ -70,19 +93,9 @@ export default function Reports() {
           <div className="report-detail">
             <div className="report-meta">
               <div className="meta-item">
-                <span className="meta-label">Report ID</span>
-                <span className="meta-value">{selectedReport.id}</span>
-              </div>
-              <div className="meta-item">
                 <span className="meta-label">Date Received</span>
                 <span className="meta-value">{selectedReport.date}</span>
               </div>
-              {selectedReport.orderId && (
-                <div className="meta-item">
-                  <span className="meta-label">Related Order</span>
-                  <span className="meta-value">{selectedReport.orderId}</span>
-                </div>
-              )}
             </div>
 
             <div className="report-content">

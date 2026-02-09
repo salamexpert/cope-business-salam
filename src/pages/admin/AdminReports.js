@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardBody, Table, Badge, Button, Modal } from '../../components';
-import { mockReports, mockClients } from '../../data/mockData';
+import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import './AdminReports.css';
 
 export default function AdminReports() {
-  const [reports, setReports] = useState(mockReports);
+  const [reports, setReports] = useState([]);
+  const [clients, setClients] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [newReport, setNewReport] = useState({
     clientId: '',
@@ -16,32 +18,84 @@ export default function AdminReports() {
     content: ''
   });
 
+  useEffect(() => {
+    fetchReports();
+    fetchClients();
+  }, []);
+
+  const fetchReports = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*, profiles!client_id(name, email)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching reports:', error);
+    } else {
+      const mapped = data.map((r, index) => ({
+        ...r,
+        displayId: `RPT-${String(data.length - index).padStart(3, '0')}`,
+        clientName: r.profiles?.name || 'Unknown',
+        clientEmail: r.profiles?.email || ''
+      }));
+      setReports(mapped);
+    }
+    setLoading(false);
+  };
+
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, company')
+      .eq('role', 'client')
+      .order('name');
+
+    if (!error) {
+      setClients(data || []);
+    }
+  };
+
   const handleViewReport = (report) => {
     setSelectedReport(report);
     setShowViewModal(true);
   };
 
-  const handleCreateReport = () => {
-    const client = mockClients.find(c => c.id === newReport.clientId);
+  const handleCreateReport = async () => {
+    const client = clients.find(c => c.id === newReport.clientId);
     if (!client || !newReport.title || !newReport.content) return;
 
-    const report = {
-      id: `RPT-${String(reports.length + 1).padStart(3, '0')}`,
-      clientId: client.id,
-      clientName: client.name,
-      clientEmail: client.email,
-      title: newReport.title,
-      date: new Date().toISOString().slice(0, 10),
-      status: 'Draft',
-      content: newReport.content
-    };
+    const { error } = await supabase
+      .from('reports')
+      .insert({
+        client_id: client.id,
+        title: newReport.title,
+        content: newReport.content,
+        status: 'Draft',
+        date: new Date().toISOString().slice(0, 10)
+      });
 
-    setReports([report, ...reports]);
+    if (error) {
+      console.error('Error creating report:', error);
+      return;
+    }
+
     setShowCreateModal(false);
     setNewReport({ clientId: '', title: '', content: '' });
+    fetchReports();
   };
 
-  const handleSendReport = (reportId) => {
+  const handleSendReport = async (reportId) => {
+    const { error } = await supabase
+      .from('reports')
+      .update({ status: 'Sent' })
+      .eq('id', reportId);
+
+    if (error) {
+      console.error('Error sending report:', error);
+      return;
+    }
+
     const updatedReports = reports.map(r => {
       if (r.id === reportId) {
         return { ...r, status: 'Sent' };
@@ -56,7 +110,7 @@ export default function AdminReports() {
   };
 
   const columns = [
-    { key: 'id', label: 'Report ID' },
+    { key: 'displayId', label: 'Report ID' },
     { key: 'clientName', label: 'Client' },
     { key: 'title', label: 'Title' },
     { key: 'date', label: 'Date' },
@@ -95,11 +149,16 @@ export default function AdminReports() {
           </div>
         </CardHeader>
         <CardBody className="no-padding">
-          <Table columns={columns} data={reports} />
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>Loading reports...</div>
+          ) : reports.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>No reports found.</div>
+          ) : (
+            <Table columns={columns} data={reports} />
+          )}
         </CardBody>
       </Card>
 
-      {/* Create Report Modal */}
       {showCreateModal && (
         <Modal
           title="Create New Report"
@@ -114,9 +173,9 @@ export default function AdminReports() {
                 onChange={(e) => setNewReport({ ...newReport, clientId: e.target.value })}
               >
                 <option value="">Select a client</option>
-                {mockClients.map(client => (
+                {clients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.name} - {client.company}
+                    {client.name} {client.company ? `- ${client.company}` : ''}
                   </option>
                 ))}
               </select>
@@ -154,7 +213,6 @@ export default function AdminReports() {
         </Modal>
       )}
 
-      {/* View Report Modal */}
       {showViewModal && selectedReport && (
         <Modal
           title={selectedReport.title}
@@ -168,7 +226,7 @@ export default function AdminReports() {
             <div className="report-meta">
               <div className="meta-item">
                 <span className="meta-label">Report ID:</span>
-                <span className="meta-value">{selectedReport.id}</span>
+                <span className="meta-value">{selectedReport.displayId}</span>
               </div>
               <div className="meta-item">
                 <span className="meta-label">Client:</span>

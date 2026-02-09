@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardBody, Table, Badge, Button, Modal } from '../../components';
-import { mockOrders, mockTickets, mockInvoices } from '../../data/mockData';
+import { Card, CardHeader, CardBody, Table, Button, Modal } from '../../components';
 import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import './AdminClients.css';
@@ -10,6 +9,7 @@ export default function AdminClients() {
   const [showModal, setShowModal] = useState(false);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clientStats, setClientStats] = useState(null);
 
   useEffect(() => {
     fetchClients();
@@ -37,23 +37,26 @@ export default function AdminClients() {
     setLoading(false);
   };
 
-  const handleViewClient = (client) => {
+  const handleViewClient = async (client) => {
     setSelectedClient(client);
     setShowModal(true);
-  };
+    setClientStats(null);
 
-  const getClientStats = (clientId) => {
-    const orders = mockOrders.filter(o => o.clientId === clientId);
-    const tickets = mockTickets.filter(t => t.clientId === clientId);
-    const invoices = mockInvoices.filter(i => i.clientId === clientId);
-    const totalSpent = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+    const [ordersRes, ticketsRes, invoicesRes, spentRes] = await Promise.all([
+      supabase.from('orders').select('*', { count: 'exact', head: true }).eq('client_id', client.id),
+      supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('client_id', client.id),
+      supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('client_id', client.id),
+      supabase.from('invoices').select('amount').eq('client_id', client.id).eq('status', 'Paid')
+    ]);
 
-    return {
-      ordersCount: orders.length,
-      ticketsCount: tickets.length,
-      invoicesCount: invoices.length,
+    const totalSpent = (spentRes.data || []).reduce((sum, inv) => sum + parseFloat(inv.amount || 0), 0);
+
+    setClientStats({
+      ordersCount: ordersRes.count || 0,
+      ticketsCount: ticketsRes.count || 0,
+      invoicesCount: invoicesRes.count || 0,
       totalSpent
-    };
+    });
   };
 
   const columns = [
@@ -95,6 +98,7 @@ export default function AdminClients() {
           onClose={() => {
             setShowModal(false);
             setSelectedClient(null);
+            setClientStats(null);
           }}
         >
           <div className="client-details">
@@ -112,29 +116,30 @@ export default function AdminClients() {
             </div>
 
             <div className="client-stats-grid">
-              {(() => {
-                const stats = getClientStats(selectedClient.id);
-                return (
-                  <>
-                    <div className="client-stat">
-                      <span className="stat-value">{stats.ordersCount}</span>
-                      <span className="stat-label">Orders</span>
-                    </div>
-                    <div className="client-stat">
-                      <span className="stat-value">{stats.ticketsCount}</span>
-                      <span className="stat-label">Tickets</span>
-                    </div>
-                    <div className="client-stat">
-                      <span className="stat-value">{stats.invoicesCount}</span>
-                      <span className="stat-label">Invoices</span>
-                    </div>
-                    <div className="client-stat">
-                      <span className="stat-value">${stats.totalSpent.toFixed(2)}</span>
-                      <span className="stat-label">Total Spent</span>
-                    </div>
-                  </>
-                );
-              })()}
+              {clientStats ? (
+                <>
+                  <div className="client-stat">
+                    <span className="stat-value">{clientStats.ordersCount}</span>
+                    <span className="stat-label">Orders</span>
+                  </div>
+                  <div className="client-stat">
+                    <span className="stat-value">{clientStats.ticketsCount}</span>
+                    <span className="stat-label">Tickets</span>
+                  </div>
+                  <div className="client-stat">
+                    <span className="stat-value">{clientStats.invoicesCount}</span>
+                    <span className="stat-label">Invoices</span>
+                  </div>
+                  <div className="client-stat">
+                    <span className="stat-value">${clientStats.totalSpent.toFixed(2)}</span>
+                    <span className="stat-label">Total Spent</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>
+                  Loading stats...
+                </div>
+              )}
             </div>
 
             <div className="client-meta">

@@ -1,17 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader, Table, Badge, Button, Modal } from '../components';
-import { mockInvoices } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Invoices.css';
 
 export default function Invoices() {
   const { user } = useAuth();
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Filter invoices for current client
-  const clientInvoices = mockInvoices.filter(i => i.clientId === user?.id);
+  useEffect(() => {
+    if (user?.id) fetchInvoices();
+  }, [user?.id]);
+
+  const fetchInvoices = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*, invoice_line_items(*)')
+      .eq('client_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching invoices:', error);
+    } else {
+      const mapped = data.map(inv => ({
+        ...inv,
+        amount: parseFloat(inv.amount || 0),
+        dueDate: inv.due_date,
+        lineItems: (inv.invoice_line_items || []).map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unit_price || 0),
+          total: parseFloat(item.total || 0)
+        }))
+      }));
+      setInvoices(mapped);
+    }
+    setLoading(false);
+  };
 
   const handleViewInvoice = (invoice) => {
     setSelectedInvoice(invoice);
@@ -19,7 +49,6 @@ export default function Invoices() {
   };
 
   const columns = [
-    { key: 'id', label: 'Invoice ID' },
     { key: 'date', label: 'Date' },
     { key: 'dueDate', label: 'Due Date' },
     { key: 'amount', label: 'Amount', render: (val) => `$${val.toFixed(2)}` },
@@ -32,21 +61,22 @@ export default function Invoices() {
       key: 'actions',
       label: 'Actions',
       render: (_, row) => (
-        <div className="invoice-actions">
-          <Button variant="secondary" size="sm" onClick={() => handleViewInvoice(row)}>
-            View
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => alert(`Downloading ${row.id}...`)}>
-            Download
-          </Button>
-        </div>
+        <Button variant="secondary" size="sm" onClick={() => handleViewInvoice(row)}>
+          View
+        </Button>
       )
     }
   ];
 
   return (
     <DashboardLayout title="Invoices">
-      {clientInvoices.length === 0 ? (
+      {loading ? (
+        <Card>
+          <CardBody>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>Loading invoices...</div>
+          </CardBody>
+        </Card>
+      ) : invoices.length === 0 ? (
         <Card>
           <CardBody>
             <div className="empty-state">
@@ -62,7 +92,7 @@ export default function Invoices() {
             <h3>Your Invoices</h3>
           </CardHeader>
           <CardBody className="no-padding">
-            <Table columns={columns} data={clientInvoices} />
+            <Table columns={columns} data={invoices} />
           </CardBody>
         </Card>
       )}
@@ -70,7 +100,7 @@ export default function Invoices() {
       {/* Invoice Detail Modal */}
       {showModal && selectedInvoice && (
         <Modal
-          title={`Invoice ${selectedInvoice.id}`}
+          title={`Invoice`}
           onClose={() => {
             setShowModal(false);
             setSelectedInvoice(null);
@@ -78,36 +108,30 @@ export default function Invoices() {
           size="lg"
         >
           <div className="invoice-detail">
-            {/* Invoice Header */}
             <div className="invoice-header">
               <div className="invoice-brand">
                 <h2>COPE Business</h2>
-                <p>Invoice #{selectedInvoice.id}</p>
+                <p>Invoice</p>
               </div>
               <Badge variant={selectedInvoice.status.toLowerCase()} size="lg">
                 {selectedInvoice.status}
               </Badge>
             </div>
 
-            {/* Invoice Info Grid */}
             <div className="invoice-info-grid">
               <div className="info-section">
                 <h4>Bill To</h4>
-                <p className="client-name">{selectedInvoice.clientName}</p>
-                <p>{selectedInvoice.clientCompany}</p>
-                <p>{selectedInvoice.clientEmail}</p>
+                <p className="client-name">{user?.name}</p>
+                <p>{user?.company || ''}</p>
+                <p>{user?.email}</p>
               </div>
               <div className="info-section">
                 <h4>Invoice Details</h4>
                 <p><strong>Invoice Date:</strong> {selectedInvoice.date}</p>
                 <p><strong>Due Date:</strong> {selectedInvoice.dueDate}</p>
-                {selectedInvoice.orderId && (
-                  <p><strong>Order ID:</strong> {selectedInvoice.orderId}</p>
-                )}
               </div>
             </div>
 
-            {/* Line Items Table */}
             <div className="invoice-items">
               <table>
                 <thead>
@@ -131,19 +155,11 @@ export default function Invoices() {
               </table>
             </div>
 
-            {/* Total */}
             <div className="invoice-total">
               <div className="total-row">
                 <span>Total Amount</span>
                 <span className="total-amount">${selectedInvoice.amount.toFixed(2)}</span>
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="invoice-modal-actions">
-              <Button variant="primary" onClick={() => alert(`Downloading ${selectedInvoice.id}...`)}>
-                Download PDF
-              </Button>
             </div>
           </div>
         </Modal>

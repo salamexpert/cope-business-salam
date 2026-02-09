@@ -47,6 +47,24 @@
   cursor: not-allowed;
 }
 
+.settings-msg {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.settings-msg.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.settings-msg.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 @media (max-width: 1024px) {
   .settings-grid {
     grid-template-columns: 1fr;

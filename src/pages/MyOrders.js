@@ -1,14 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader, Table, Badge, Button, Modal } from '../components';
-import { mockOrders } from '../data/mockData';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './MyOrders.css';
 
 export default function MyOrders() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  useEffect(() => {
+    if (user?.id) fetchOrders();
+  }, [user?.id]);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('client_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching orders:', error);
+    } else {
+      const mapped = data.map(o => ({
+        ...o,
+        serviceName: o.service_name,
+        price: parseFloat(o.price || 0),
+        progress: o.progress || 0
+      }));
+      setOrders(mapped);
+    }
+    setLoading(false);
+  };
+
   const columns = [
-    { key: 'id', label: 'Order ID', width: '120px' },
     { key: 'serviceName', label: 'Service', width: '200px' },
     { key: 'plan', label: 'Plan', width: '100px' },
     { key: 'date', label: 'Date', width: '120px' },
@@ -19,9 +48,9 @@ export default function MyOrders() {
       render: (val) => <Badge variant={val.toLowerCase()}>{val}</Badge>
     },
     {
-      key: 'id',
+      key: 'actions',
       label: 'Action',
-      render: (val, row) => (
+      render: (_, row) => (
         <Button
           variant="ghost"
           size="sm"
@@ -32,19 +61,6 @@ export default function MyOrders() {
       )
     }
   ];
-
-  const getProgressPercentage = (status) => {
-    switch (status) {
-      case 'Pending':
-        return 10;
-      case 'In Progress':
-        return 50;
-      case 'Completed':
-        return 100;
-      default:
-        return 0;
-    }
-  };
 
   const getStatusSteps = () => {
     const steps = ['Ordered', 'Processing', 'Completed'];
@@ -64,14 +80,32 @@ export default function MyOrders() {
 
   return (
     <DashboardLayout title="My Orders">
-      <Card>
-        <CardHeader>
-          <h3>Order History</h3>
-        </CardHeader>
-        <CardBody className="no-padding">
-          <Table columns={columns} data={mockOrders} />
-        </CardBody>
-      </Card>
+      {loading ? (
+        <Card>
+          <CardBody>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>Loading orders...</div>
+          </CardBody>
+        </Card>
+      ) : orders.length === 0 ? (
+        <Card>
+          <CardBody>
+            <div className="empty-state">
+              <span className="empty-icon">📦</span>
+              <h3>No Orders Yet</h3>
+              <p>You haven't placed any orders yet. Browse our services to get started!</p>
+            </div>
+          </CardBody>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <h3>Order History</h3>
+          </CardHeader>
+          <CardBody className="no-padding">
+            <Table columns={columns} data={orders} />
+          </CardBody>
+        </Card>
+      )}
 
       <Modal
         isOpen={selectedOrder !== null}
@@ -84,10 +118,6 @@ export default function MyOrders() {
             <div className="details-section">
               <h4>Order Summary</h4>
               <div className="summary-grid">
-                <div className="summary-item">
-                  <span className="label">Order ID</span>
-                  <span className="value">{selectedOrder.id}</span>
-                </div>
                 <div className="summary-item">
                   <span className="label">Service</span>
                   <span className="value">{selectedOrder.serviceName}</span>
@@ -131,23 +161,6 @@ export default function MyOrders() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="details-section">
-              <h4>Delivered Files</h4>
-              {selectedOrder.deliveredFiles.length > 0 ? (
-                <div className="files-list">
-                  {selectedOrder.deliveredFiles.map((file, idx) => (
-                    <div key={idx} className="file-item">
-                      <span className="file-icon">📄</span>
-                      <span className="file-name">{file}</span>
-                      <Button variant="ghost" size="sm">Download</Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-text">No files delivered yet. Check back soon!</p>
-              )}
             </div>
 
             <div className="modal-footer">

@@ -10,4 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    lock: async (name, acquireTimeout, fn) => {
+      // Bypass browser navigator.locks to prevent AbortError deadlocks
+      return await fn();
+    }
+  }
+});

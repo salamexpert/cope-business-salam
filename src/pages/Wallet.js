@@ -1,38 +1,32 @@
 import { useState } from 'react';
-import { Card, CardBody, CardHeader, Table, Badge, Button, Modal } from '../components';
-import { mockTransactions } from '../data/mockData';
+import { Card, CardBody, CardHeader, Button, Modal } from '../components';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import './Wallet.css';
 
 export default function Wallet() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('card');
-  const [balance, setBalance] = useState(parseFloat(user?.wallet_balance || 0));
+  const [processing, setProcessing] = useState(false);
 
-  const columns = [
-    { key: 'date', label: 'Date' },
-    { key: 'description', label: 'Description' },
-    { key: 'type', label: 'Type', render: (val) => <Badge variant={val === 'Payment' ? 'default' : 'default'}>{val}</Badge> },
-    {
-      key: 'amount',
-      label: 'Amount',
-      render: (val) => (
-        <span className={val >= 0 ? 'amount-positive' : 'amount-negative'}>
-          {val >= 0 ? '+' : ''} ${Math.abs(val).toFixed(2)}
-        </span>
-      )
-    }
-  ];
+  const balance = parseFloat(user?.wallet_balance || 0);
 
-  const handleAddFunds = () => {
-    if (amount && parseFloat(amount) > 0) {
-      setBalance(balance + parseFloat(amount));
+  const handleAddFunds = async () => {
+    if (!amount || parseFloat(amount) <= 0) return;
+
+    setProcessing(true);
+    const newBalance = balance + parseFloat(amount);
+    const result = await updateProfile({ wallet_balance: newBalance });
+
+    setProcessing(false);
+    if (result.success) {
       setShowAddFunds(false);
       setAmount('');
       alert(`Successfully added $${parseFloat(amount).toFixed(2)} to your wallet`);
+    } else {
+      alert('Failed to add funds. Please try again.');
     }
   };
 
@@ -63,8 +57,10 @@ export default function Wallet() {
           <CardHeader>
             <h3>Transaction History</h3>
           </CardHeader>
-          <CardBody className="no-padding">
-            <Table columns={columns} data={mockTransactions} />
+          <CardBody>
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+              <p>Transaction history will be available soon.</p>
+            </div>
           </CardBody>
         </Card>
       </div>
@@ -139,8 +135,8 @@ export default function Wallet() {
             <Button variant="secondary" onClick={() => setShowAddFunds(false)} className="btn-block">
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleAddFunds} className="btn-block">
-              Add Funds
+            <Button variant="primary" onClick={handleAddFunds} className="btn-block" disabled={processing}>
+              {processing ? 'Processing...' : 'Add Funds'}
             </Button>
           </div>
         </div>

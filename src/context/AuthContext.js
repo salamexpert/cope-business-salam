@@ -39,23 +39,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (profile) {
-          setUserFromProfile(profile);
-        }
+        fetchProfile(session.user.id).then(profile => {
+          if (profile) setUserFromProfile(profile);
+          setIsLoading(false);
+        });
+      } else {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
+    // IMPORTANT: Do NOT make this callback async - it causes a deadlock
+    // with Supabase's internal auth lock mechanism
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          if (profile) {
-            setUserFromProfile(profile);
-          }
+          fetchProfile(session.user.id).then(profile => {
+            if (profile) setUserFromProfile(profile);
+          });
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setIsAuthenticated(false);
@@ -67,23 +69,28 @@ export function AuthProvider({ children }) {
   }, [fetchProfile, setUserFromProfile]);
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (error) {
-      return { success: false, error: error.message };
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      const profile = await fetchProfile(data.user.id);
+      if (!profile) {
+        await supabase.auth.signOut();
+        return { success: false, error: 'User profile not found' };
+      }
+
+      setUserFromProfile(profile);
+      return { success: true, role: profile.role };
+    } catch (err) {
+      console.error('Login error:', err);
+      return { success: false, error: err.message || 'Login failed' };
     }
-
-    const profile = await fetchProfile(data.user.id);
-    if (!profile) {
-      await supabase.auth.signOut();
-      return { success: false, error: 'User profile not found' };
-    }
-
-    setUserFromProfile(profile);
-    return { success: true, role: profile.role };
   };
 
   const signup = async (name, email, password) => {
@@ -99,14 +106,12 @@ export function AuthProvider({ children }) {
       return { success: false, error: error.message };
     }
 
-    // If email confirmation is enabled, user won't have a session yet
     const needsConfirmation = data.user && !data.session;
 
     if (needsConfirmation) {
       return { success: true, needsConfirmation: true };
     }
 
-    // If no confirmation needed, set up profile and sign in
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -128,6 +133,22 @@ export function AuthProvider({ children }) {
     return { success: true, needsConfirmation: false };
   };
 
+  const updateProfile = async (updates) => {
+    if (!user) return { success: false, error: 'Not logged in' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    setUser(prev => ({ ...prev, ...updates }));
+    return { success: true };
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -140,7 +161,8 @@ export function AuthProvider({ children }) {
     isLoading,
     login,
     signup,
-    logout
+    logout,
+    updateProfile
   };
 
   return (
