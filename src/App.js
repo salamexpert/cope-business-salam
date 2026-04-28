@@ -22,6 +22,7 @@ import {
   AdminReports,
   AdminSettings
 } from './pages/admin';
+import LegalDisclaimer from './pages/LegalDisclaimer';
 import './App.css';
 
 function App() {
@@ -110,6 +111,9 @@ function App() {
               <AdminSettings />
             </ProtectedRoute>
           } />
+
+          {/* Public legal pages */}
+          <Route path="/legal-disclaimer" element={<LegalDisclaimer />} />
 
           {/* Catch-all - redirect to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />

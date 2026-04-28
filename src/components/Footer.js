@@ -115,6 +115,7 @@ export default function Footer() {
             <a href="#privacy">Privacy</a>
             <a href="#terms">Terms</a>
             <a href="#cookies">Cookies</a>
+            <Link to="/legal-disclaimer">Legal Disclaimer</Link>
           </div>
         </div>
       </div>
